@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Creating Real-Time Charts with Flask</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!--suppress JSUnresolvedLibraryURL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.0/jquery.min.js"></script>
+
+    <script type="text/javascript" src="https://fastly.jsdelivr.net/npm/echarts@5.3.3/dist/echarts.min.js"></script>
+    <style>
+        /* 在这里插入你的代码 */
+        @media only screen and (orientation: landscape) {
+            body {
+                transform: rotate(90deg);
+                transform-origin: top left;
+                width: 100vh;
+                height: 100vw;
+                overflow-x: hidden;
+                overflow-y: auto;
+            }
+
+            .rotate-90 {
+                transform: none;
+                writing-mode: horizontal-tb;
+            }
+
+            .container,
+            .row,
+            .col-5,
+            .col-12,
+            .card,
+            .card-body {
+                height: 100%;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+
+            #mychart {
+                width: 100%;
+                height: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col-5"></div>
+            <div class="col-12">
+                <div class="card">
+<!--                    放置图表的元素-->
+                    <div class="card-body" id="mychart" style="width: 900px;height: 400px">
+                    </div>
+                </div>
+                <br>
+                <div>
+                    <button id="btn1" type="button" class="btn btn-primary">询问</button>
+                    <button id="btn2" type="button" class="btn btn-primary">停止</button>
+                </div>
+            </div>
+            <div class="col-5"></div>
+        </div>
+    </div>
+    <script>
+        $(document).ready(function () {
+            var dom = document.getElementById('mychart');
+            var myChart = echarts.init(dom, null, {
+                renderer: 'canvas',
+                useDirtyRect: false
+            });
+            var option;  // 图表参数
+
+            option = {
+                title: {
+                    text: '模型训练日志',
+                    zlevel: 0,  //默认值
+                    z: 6,  //默认值
+                },
+                // 滚动条配置
+                dataZoom: [
+                    {
+                        type: 'slider',
+                        show: true,
+                        xAxisIndex: [0],
+                        start: 0,    //初始化时，滑动条宽度开始标度
+                        end: 100,
+                        bottom: '3%',
+                        height: 10, //组件高度
+                        fillerColor: '#3E86FF',
+                        borderColor: "transparent",
+                        backgroundColor: 'white',//两边未选中的滑动条区域的颜色
+                        showDataShadow: false,//是否显示数据阴影 默认auto
+                        showDetail: false,//即拖拽时候是否显示详细数值信息 默认true
+                    },
+                    //下面这个属性是里面拖动配置
+                    {
+                        type: 'inside',
+                        xAxisIndex: 0,
+                        start: 0,//默认为1
+                        end: 100,//默认为100
+                    }
+                ],
+                // 显示鼠标接触位置曲线数据
+                tooltip: {
+                    trigger: 'axis'
+                },
+                // 曲线图例
+                legend: {
+                    data: ['Train auc', 'Val auc']   //1
+                },
+                // 曲线框距离图表框的距离
+                grid: {
+                    top: '15%',
+                    left: '5%',
+                    right: '140',
+                    bottom: '8%',
+                    containLabel: true,
+                },
+                toolbox: {
+                    feature: {
+                        saveAsImage: {},
+                        dataView: {}, // 是否显示出原始数据
+                    }
+                },
+                xAxis: {
+                    // x轴配置，两条曲线共用一个x轴
+                    type: 'category',
+                    boundaryGap: false,
+                    data: []  // 2
+                },
+                yAxis: {
+                    type: 'value'
+                },
+                series: [
+                    // 两条曲线y轴配置
+                    {
+                        name: 'Train auc',
+                        data: [],
+                        type: 'line',
+                        showSymbol: false,
+                        // 配置曲线尾端显示数据格式
+                        endLabel: {
+                            show: true,
+                            formatter: function (params) {
+                                return params.seriesName + ': ' + params.data;
+                            }
+                        },
+                        labelLayout: {
+                            moveOverlap: 'shiftY'
+                        },
+                        emphasis: {
+                            focus: 'series'
+                        },
+                    },
+                    {
+                        name: 'Val auc',
+                        data: [],
+                        type: 'line',
+                        showSymbol: false,
+                        endLabel: {
+                            show: true,
+                            formatter: function (params) {
+                                return params.seriesName + ': ' + params.data;
+                            }
+                        },
+                        labelLayout: {
+                            moveOverlap: 'shiftY'
+                        },
+                        emphasis: {
+                            focus: 'series'
+                        },
+                    }
+                ] //3
+
+            }
+			// 初始化图表
+            if (option && typeof option === 'object') {
+                // 设置为true的话，就是notMerge，不合并,false的话，就Merge，之前的东西还保留~
+                myChart.setOption(option, true);
+            }
+            //实现了图表跟随窗口大小自适应的需求
+            window.addEventListener('resize', myChart.resize);
+
+            // SSE接收
+            var source = null;
+            $("#btn1").click(function () {
+                source = new EventSource("/chart-data");
+                // readyState一个 unsigned short 值，代表连接状态。可能值是 CONNECTING (0), OPEN (1), 或者 CLOSED (2)。
+                console.log('EventSource.readyState ' + source.readyState);
+
+                // sse 连接开启时回调函数
+                source.onopen = function (event) {
+                    console.log("onopen");
+                    console.log('EventSource.readyState ' + source.readyState);
+                }
+                // 消息监听，event 是后端返回的数据,相当于python字典
+                source.onmessage = function (event) {
+                    update_data(event);
+                }
+                // 监听 error 事件，后端超时没有传输数据时触发
+                source.onerror = function (event) {
+                    console.log("error happened");
+                    source.close();
+                    console.log('EventSource.readyState ' + source.readyState);
+                }
+            })
+
+            // 绑定停止按钮事件
+            $("#btn2").click(function () {
+                if (source !== null) {
+                    source.close();
+                    // delete_data();
+                }
+            })
+
+            // 更新图表数据
+            function update_data(event) {
+                const data = JSON.parse(event.data);
+                console.log(data)
+                option.xAxis.data.push(data.time);
+                option.series[0].data.push(data.value1);
+                option.series[1].data.push(data.value2);
+                myChart.setOption(option, true)
+            }
+
+            // 删除图表数据
+            function delete_data() {
+                option.xAxis.data = [];
+                option.series[0].data = [];
+                option.series[1].data = [];
+                myChart.setOption(option, true);
+            }
+        });
+
+    </script>
+</body>
+
+</html>

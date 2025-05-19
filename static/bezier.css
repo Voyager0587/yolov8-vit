@@ -1,0 +1,50 @@
+.graph {
+  font-size: 13px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 10px 10px 10px 25px;
+  border: 1px solid #ccc;
+  z-index: 99999;
+  background: #fff;
+}
+
+h2 {
+  margin: 3px 0;
+}
+
+canvas {
+  display: block;
+}
+
+figure {
+  display: block;
+  position: relative;
+  width: 200px;
+  margin: 0;
+}
+
+figcaption {
+  display: block;
+  position: absolute;
+}
+
+#axisHeight {
+  left: -23px;
+  top: 210px;
+  transform: rotate(-90deg);
+}
+
+#axisHeat {
+  left: 100px;
+  top: 335px;
+}
+
+#bezierInp {
+  width: 200px;
+  box-sizing: border-box;
+  background: #eee;
+  border: 1px solid #ccc;
+  padding: 2px 3px;
+  font-size: 14px;
+}

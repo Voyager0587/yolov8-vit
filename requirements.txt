@@ -1,0 +1,17 @@
+requests
+opencv-python
+oss2
+numpy
+timm
+torch
+torchvision
+torchaudio
+flask-sse
+# Add other potential dependencies based on trainYolo.py and trainClass.py if any are missed
+# For example, if YOLO training requires specific packages like pyyaml for configs
+pyyaml
+matplotlib
+pandas
+scipy
+# tqdm for progress bars
+tqdm
